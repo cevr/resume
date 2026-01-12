@@ -4,99 +4,72 @@ description: Help improve resume content for ATS optimization and hiring. Use wh
 allowed-tools: Read, Grep, Glob, Edit, Bash
 ---
 
-# Resume Improvement Skill
+# Resume CLI Skill
 
-Help the user improve their resume for maximum hirability and ATS (Applicant Tracking System) optimization.
+This skill covers two areas:
+1. **Resume Content Improvement** - Optimizing resume content for ATS and hiring
+2. **Codebase Development** - Working on the Resume CLI tool itself
+
+## Quick Start
+
+```bash
+# Development
+bun run dev -- <command>
+
+# Run tests
+bun run test
+
+# Build
+bun run build
+```
 
 ## Resume Location
 
 The master resume is at `data/resume.md` in YAML frontmatter format.
 
-## CLI Tool Available
+## CLI Commands
 
-This project has a built-in CLI tool. Run commands with `bun run dev --` or use the global `resume` command:
+| Command | Description |
+|---------|-------------|
+| `init` | Create resume from template |
+| `stats` | Show resume statistics |
+| `search <term>` | Search resume content |
+| `validate [--strict]` | Check structure/ATS compatibility |
+| `preview [--browser\|--pdf]` | Preview resume |
+| `export -f <format>` | Export to PDF/DOCX/TXT/JSON |
+| `export --all` | Export all formats |
+| `analyze --job-url <url>` | Match against job posting |
+| `analyze --job <name>` | Match against saved job |
+| `tailor --job-url <url> --name <name>` | Generate variant |
+| `jobs add\|list\|remove` | Manage saved jobs |
+| `variants list\|diff\|remove` | Manage variants |
 
-```bash
-resume validate          # Check structure and ATS issues
-resume preview           # Terminal preview
-resume analyze --job-url <url>  # Match against job posting
-resume export -f pdf     # Export to PDF
-```
+---
 
-## Improvement Guidelines
+## Part 1: Resume Content Improvement
 
-### 1. Quantify Achievements
+### Quantify Achievements
 
-Every bullet point should include metrics where possible:
+Every bullet point should include metrics:
 
-**Weak:**
-- Led infrastructure modularization
+**Weak:** Led infrastructure modularization
 
-**Strong:**
-- Led infrastructure modularization reducing deployment time by 60% and enabling 3 teams to deploy independently
+**Strong:** Led infrastructure modularization reducing deployment time by 60% and enabling 3 teams to deploy independently
 
-**Patterns to look for:**
-- "Improved X" → Add percentage or absolute numbers
-- "Led team" → Add team size and scope
-- "Built feature" → Add user impact or business outcome
-- "Reduced/Increased" → Always add specific metrics
+### Strong Action Verbs
 
-### 2. Strong Action Verbs
+**Staff/Lead Level:** Architected, Spearheaded, Pioneered, Orchestrated, Established, Championed, Drove, Mentored, Influenced, Transformed
 
-Use impactful verbs appropriate for the level:
+**Avoid:** Helped, Assisted, Worked on, Was responsible for
 
-**Staff/Lead Level Verbs:**
-- Architected, Spearheaded, Pioneered, Orchestrated
-- Established, Championed, Drove, Directed
-- Mentored, Influenced, Transformed
+### ATS Keywords for Staff Product Engineering
 
-**Avoid:**
-- Helped, Assisted, Worked on, Was responsible for
+- **Technical:** architecture, scalable, distributed, performance, microservices
+- **Leadership:** mentorship, cross-functional, stakeholder, strategy, roadmap
+- **Process:** agile, CI/CD, DevOps, testing, code review
+- **Impact:** revenue, growth, efficiency, cost reduction
 
-### 3. ATS Optimization
-
-**Keywords to include for Staff Product Engineering:**
-- Technical: architecture, scalable, distributed, performance, microservices
-- Leadership: mentorship, cross-functional, stakeholder, strategy, roadmap
-- Process: agile, CI/CD, DevOps, testing, code review
-- Impact: revenue, growth, efficiency, cost reduction
-
-**Format rules:**
-- Use standard section headers (Experience, Skills, Education)
-- Avoid tables, columns, graphics
-- Spell out acronyms at least once
-- Use consistent date formats (YYYY-MM or Month YYYY)
-
-### 4. Staff/Lead Level Positioning
-
-Emphasize:
-- System-wide impact, not just feature work
-- Cross-team collaboration and influence
-- Technical decision-making and architecture
-- Mentorship and team growth
-- Business outcomes tied to technical work
-
-### 5. Skills Organization
-
-Group skills by category:
-- Frontend: React, TypeScript, Next.js, etc.
-- Backend: Node.js, GraphQL, databases
-- Infrastructure: Docker, Kubernetes, CI/CD
-- Leadership: System Design, Technical Strategy
-
-## When Analyzing Job Postings
-
-1. Extract key requirements and keywords
-2. Compare against current resume
-3. Identify gaps in:
-   - Missing technical skills
-   - Missing soft skills/leadership indicators
-   - Experience level alignment
-4. Suggest specific changes to highlight relevant experience
-
-## Resume Schema Reference
-
-The resume uses this structure in `data/resume.md`:
+### Resume Schema
 
 ```yaml
 contact:
@@ -115,41 +88,88 @@ experience:
   - company: "Company Name"
     title: "Job Title"
     startDate: "YYYY-MM"
-    endDate: "present" or "YYYY-MM"
+    endDate: "present"
     highlights:
       - text: "Achievement description"
         keywords: [relevant, keywords]
         quantified: true/false
+    technologies: [...]
 ```
 
-## Improvement Workflow
+### Improvement Workflow
 
-1. **Read current resume**: `Read data/resume.md`
-2. **Validate structure**: `resume validate --strict`
-3. **Identify weak points**: Look for unquantified achievements, weak verbs
-4. **Suggest improvements**: Provide before/after examples
-5. **Apply changes**: Use Edit tool to update `data/resume.md`
-6. **Verify**: Run `resume preview` to check formatting
+1. Read current resume: `Read data/resume.md`
+2. Validate: `bun run dev -- validate --strict`
+3. Identify weak points (unquantified achievements, weak verbs)
+4. Suggest improvements with before/after examples
+5. Apply changes with Edit tool
+6. Verify: `bun run dev -- preview`
 
-## Additional Resources
+---
 
-- For ATS keyword reference, see [ats-keywords.md](ats-keywords.md)
-- For bullet point improvement examples, see [bullet-examples.md](bullet-examples.md)
+## Part 2: Codebase Development
 
-## Common Improvements for This Resume
+### Architecture
 
-Based on initial analysis:
+```
+src/
+├── cli/commands/     # CLI command handlers
+├── schema/           # Effect Schema definitions
+├── services/         # Effect services with Layer pattern
+└── layers/App.ts     # Composed application layer
 
-1. **Add metrics to these roles:**
-   - Bite: "Led infrastructure modularization" - add deployment frequency improvement
-   - Glossi: "Managed deadlines" - add project count or team size
-   - Turbulent: "Managed sprints" - add velocity improvement or team size
+tests/
+├── commands/         # Workflow-based command tests
+└── helpers/          # Test fixtures and layers
+```
 
-2. **Strengthen leadership narrative:**
-   - Add team sizes managed
-   - Quantify mentorship impact
-   - Highlight cross-functional work
+### Effect Patterns
 
-3. **Update skills:**
-   - Add: Effect, Bun (modern tools being used)
-   - Consider adding: System Design, Technical Leadership
+**Services** use `Context.Tag` with `layer` and `test()`:
+
+```typescript
+export class MyService extends Context.Tag("@app/MyService")<
+  MyService,
+  MyServiceInterface
+>() {
+  static readonly layer = Layer.succeed(MyService, MyService.of({...}))
+  static readonly test = () => Layer.succeed(MyService, MyService.of({...}))
+}
+```
+
+**Tests** use `@effect/vitest`:
+
+```typescript
+it.effect("description", () =>
+  Effect.gen(function* () {
+    const result = yield* someEffect
+    expect(result).toBe(expected)
+  }).pipe(Effect.provide(TestLayer))
+)
+```
+
+### Services
+
+| Service | Purpose |
+|---------|---------|
+| `Config` | App configuration from env |
+| `ResumeRepo` | Load/save resume files |
+| `Exporter` | JSON/Text export |
+| `PdfRenderer` | PDF generation |
+| `DocxRenderer` | DOCX generation |
+| `JobAnalyzer` | Job matching/analysis |
+| `Preview` | Terminal/browser preview |
+
+### Testing
+
+90 tests across 10 files using workflow-based testing:
+- Extract command logic into testable functions
+- Use mock layers for services
+- Track service calls with Ref
+- Assert on outputs and side effects
+
+```bash
+bun run test                    # Run all tests
+bun run test -- <file>          # Run specific file
+bun run test:watch              # Watch mode
+```
