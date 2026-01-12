@@ -1,0 +1,41 @@
+{
+  "name": "resume",
+  "module": "src/main.ts",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "resume": "./bin/resume"
+  },
+  "scripts": {
+    "dev": "bun run src/main.ts",
+    "build": "bun build ./src/main.ts --compile --outfile bin/resume",
+    "install:global": "bun run build && ln -sf $(pwd)/bin/resume ~/.bun/bin/resume",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepare": "effect-language-service patch"
+  },
+  "devDependencies": {
+    "@effect/language-service": "^0.64.1",
+    "@effect/vitest": "^0.27.0",
+    "@types/bun": "latest",
+    "@types/react": "^19.2.8",
+    "vitest": "^4.0.17"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.12",
+    "@effect/cli": "^0.73.0",
+    "@effect/platform": "^0.94.1",
+    "@effect/platform-bun": "^0.87.0",
+    "@effect/schema": "^0.75.5",
+    "@react-pdf/renderer": "^4.3.2",
+    "ai": "^6.0.30",
+    "docx": "^9.5.1",
+    "effect": "^3.19.14",
+    "gray-matter": "^4.0.3",
+    "react": "^19.2.3",
+    "zod": "^4.3.5"
+  }
+}
