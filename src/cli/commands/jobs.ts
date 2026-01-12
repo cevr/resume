@@ -9,7 +9,7 @@ interface SavedJob {
   source: string
   addedAt: string
   content: string
-  keywords: string[]
+  keywords: readonly string[]
   matchScore: number
 }
 
@@ -40,7 +40,7 @@ const addCommand = Command.make(
       if (isUrl) {
         yield* Console.log(`Fetching job description from ${source}...`)
         const jobDesc = yield* analyzer.fetchJobDescription(source)
-        content = jobDesc.raw
+        content = jobDesc.rawText
       } else {
         yield* Console.log(`Reading job description from ${source}...`)
         const bytes = yield* fs.readFile(source)
@@ -63,17 +63,17 @@ const addCommand = Command.make(
       const savedJob: SavedJob = {
         name,
         source,
-        addedAt: new Date().toISOString().split("T")[0],
+        addedAt: new Date().toISOString().split("T")[0] ?? "",
         content,
         keywords: jobDesc.keywords,
-        matchScore: analysis.score,
+        matchScore: analysis.matchScore,
       }
 
       const jobPath = `${jobsDir}/${name}.json`
       yield* fs.writeFileString(jobPath, JSON.stringify(savedJob, null, 2))
 
       yield* Console.log(`\n✓ Job saved as "${name}"`)
-      yield* Console.log(`  Match score: ${analysis.score}%`)
+      yield* Console.log(`  Match score: ${analysis.matchScore}%`)
       yield* Console.log(`  Keywords: ${jobDesc.keywords.slice(0, 5).join(", ")}...`)
       yield* Console.log(`\nUse: resume analyze --job ${name}`)
     })

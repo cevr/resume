@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Schema } from "effect"
+import { Context, Effect, Layer, Option, Schema } from "effect"
 import { FileSystem } from "@effect/platform"
 import { Resume } from "../schema/Resume.ts"
 import { ExportError } from "./errors.ts"
@@ -17,127 +17,140 @@ export interface ExporterService {
   readonly export: (resume: Resume, options: ExportOptions) => Effect.Effect<void, ExportError, FileSystem.FileSystem>
 }
 
+// Implementation functions - called directly within the service
+const toJsonImpl = (resume: Resume): string =>
+  JSON.stringify(Schema.encodeSync(Resume)(resume), null, 2)
+
+// Helper to format skill line
+const formatSkillLine = (label: string, skills: Option.Option<readonly string[]>): Option.Option<string> =>
+  Option.map(skills, (s) => `${label}: ${s.join(", ")}`)
+
+const toTextImpl = (resume: Resume): string => {
+  const lines: string[] = []
+
+  // Header
+  lines.push(resume.contact.name.toUpperCase())
+  lines.push("")
+
+  // Contact info - collect all present optional fields
+  const contactParts = [
+    resume.contact.email,
+    ...Option.getOrElse(Option.map(resume.contact.phone, (v) => [v]), () => []),
+    ...Option.getOrElse(Option.map(resume.contact.location, (v) => [v]), () => []),
+    ...Option.getOrElse(Option.map(resume.contact.website, (v) => [v]), () => []),
+    ...Option.getOrElse(Option.map(resume.contact.linkedin, (v) => [v]), () => []),
+    ...Option.getOrElse(Option.map(resume.contact.github, (v) => [v]), () => []),
+  ]
+  lines.push(contactParts.join(" | "))
+  lines.push("")
+
+  // Summary
+  Option.match(resume.summary, {
+    onNone: () => {},
+    onSome: (summary) => {
+      lines.push("SUMMARY")
+      lines.push("-".repeat(40))
+      lines.push(summary.default)
+      lines.push("")
+    },
+  })
+
+  // Skills - collect all present skill categories
+  const skillLines = [
+    formatSkillLine("Frontend", resume.skills.frontend),
+    formatSkillLine("Backend", resume.skills.backend),
+    formatSkillLine("Infrastructure", resume.skills.infrastructure),
+    formatSkillLine("Languages", resume.skills.languages),
+    formatSkillLine("Leadership", resume.skills.leadership),
+    formatSkillLine("Tools", resume.skills.tools),
+  ].filter(Option.isSome).map((o) => o.value)
+
+  if (skillLines.length > 0) {
+    lines.push("SKILLS")
+    lines.push("-".repeat(40))
+    lines.push(...skillLines)
+    lines.push("")
+  }
+
+  // Experience
+  lines.push("EXPERIENCE")
+  lines.push("-".repeat(40))
+  for (const exp of resume.experience) {
+    lines.push(`${exp.title} | ${exp.company}`)
+    const location = Option.getOrElse(Option.map(exp.location, (l) => ` | ${l}`), () => "")
+    lines.push(`${exp.startDate} - ${exp.endDate}${location}`)
+    for (const highlight of exp.highlights) {
+      lines.push(`  - ${highlight.text}`)
+    }
+    lines.push("")
+  }
+
+  // Education
+  Option.match(resume.education, {
+    onNone: () => {},
+    onSome: (education) => {
+      if (education.length > 0) {
+        lines.push("EDUCATION")
+        lines.push("-".repeat(40))
+        for (const edu of education) {
+          lines.push(`${edu.degree} - ${edu.institution}`)
+          Option.map(edu.graduationDate, (d) => lines.push(d))
+          Option.map(edu.honors, (h) => lines.push(h))
+          lines.push("")
+        }
+      }
+    },
+  })
+
+  // Projects
+  Option.match(resume.projects, {
+    onNone: () => {},
+    onSome: (projects) => {
+      if (projects.length > 0) {
+        lines.push("PROJECTS")
+        lines.push("-".repeat(40))
+        for (const proj of projects) {
+          lines.push(proj.name)
+          lines.push(proj.description)
+          Option.map(proj.url, (u) => lines.push(u))
+          Option.match(proj.highlights, {
+            onNone: () => {},
+            onSome: (highlights) => {
+              for (const h of highlights) {
+                lines.push(`  - ${h}`)
+              }
+            },
+          })
+          lines.push("")
+        }
+      }
+    },
+  })
+
+  return lines.join("\n")
+}
+
 export class Exporter extends Context.Tag("@app/Exporter")<
   Exporter,
   ExporterService
 >() {
   static readonly layer = Layer.succeed(Exporter, Exporter.of({
-    toJson: (resume) =>
-      Effect.sync(() => JSON.stringify(Schema.encodeSync(Resume)(resume), null, 2)),
+    toJson: (resume) => Effect.sync(() => toJsonImpl(resume)),
 
-    toText: (resume) =>
-      Effect.sync(() => {
-        const lines: string[] = []
-
-        // Header
-        lines.push(resume.contact.name.toUpperCase())
-        lines.push("")
-
-        // Contact info
-        const contactParts: string[] = [resume.contact.email]
-        if (resume.contact.phone._tag === "Some") contactParts.push(resume.contact.phone.value)
-        if (resume.contact.location._tag === "Some") contactParts.push(resume.contact.location.value)
-        if (resume.contact.website._tag === "Some") contactParts.push(resume.contact.website.value)
-        if (resume.contact.linkedin._tag === "Some") contactParts.push(resume.contact.linkedin.value)
-        if (resume.contact.github._tag === "Some") contactParts.push(resume.contact.github.value)
-        lines.push(contactParts.join(" | "))
-        lines.push("")
-
-        // Summary
-        if (resume.summary._tag === "Some") {
-          lines.push("SUMMARY")
-          lines.push("-".repeat(40))
-          lines.push(resume.summary.value.default)
-          lines.push("")
-        }
-
-        // Skills
-        lines.push("SKILLS")
-        lines.push("-".repeat(40))
-        if (resume.skills.frontend._tag === "Some") {
-          lines.push(`Frontend: ${resume.skills.frontend.value.join(", ")}`)
-        }
-        if (resume.skills.backend._tag === "Some") {
-          lines.push(`Backend: ${resume.skills.backend.value.join(", ")}`)
-        }
-        if (resume.skills.infrastructure._tag === "Some") {
-          lines.push(`Infrastructure: ${resume.skills.infrastructure.value.join(", ")}`)
-        }
-        if (resume.skills.languages._tag === "Some") {
-          lines.push(`Languages: ${resume.skills.languages.value.join(", ")}`)
-        }
-        if (resume.skills.leadership._tag === "Some") {
-          lines.push(`Leadership: ${resume.skills.leadership.value.join(", ")}`)
-        }
-        if (resume.skills.tools._tag === "Some") {
-          lines.push(`Tools: ${resume.skills.tools.value.join(", ")}`)
-        }
-        lines.push("")
-
-        // Experience
-        lines.push("EXPERIENCE")
-        lines.push("-".repeat(40))
-        for (const exp of resume.experience) {
-          lines.push(`${exp.title} | ${exp.company}`)
-          const location = exp.location._tag === "Some" ? ` | ${exp.location.value}` : ""
-          lines.push(`${exp.startDate} - ${exp.endDate}${location}`)
-          for (const highlight of exp.highlights) {
-            lines.push(`  - ${highlight.text}`)
-          }
-          lines.push("")
-        }
-
-        // Education
-        if (resume.education._tag === "Some" && resume.education.value.length > 0) {
-          lines.push("EDUCATION")
-          lines.push("-".repeat(40))
-          for (const edu of resume.education.value) {
-            lines.push(`${edu.degree} - ${edu.institution}`)
-            if (edu.graduationDate._tag === "Some") {
-              lines.push(edu.graduationDate.value)
-            }
-            if (edu.honors._tag === "Some") {
-              lines.push(edu.honors.value)
-            }
-            lines.push("")
-          }
-        }
-
-        // Projects
-        if (resume.projects._tag === "Some" && resume.projects.value.length > 0) {
-          lines.push("PROJECTS")
-          lines.push("-".repeat(40))
-          for (const proj of resume.projects.value) {
-            lines.push(proj.name)
-            lines.push(proj.description)
-            if (proj.url._tag === "Some") {
-              lines.push(proj.url.value)
-            }
-            if (proj.highlights._tag === "Some") {
-              for (const h of proj.highlights.value) {
-                lines.push(`  - ${h}`)
-              }
-            }
-            lines.push("")
-          }
-        }
-
-        return lines.join("\n")
-      }),
+    toText: (resume) => Effect.sync(() => toTextImpl(resume)),
 
     export: (resume, options) =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem
-        const exporter = yield* Exporter
 
         let content: string | Uint8Array
 
         switch (options.format) {
           case "json":
-            content = yield* exporter.toJson(resume)
+            content = toJsonImpl(resume)
             break
           case "txt":
-            content = yield* exporter.toText(resume)
+            content = toTextImpl(resume)
             break
           case "pdf":
           case "docx":

@@ -1,6 +1,7 @@
 import { Context, Effect, Layer } from "effect"
 import { FileSystem } from "@effect/platform"
 import { renderToBuffer } from "@react-pdf/renderer"
+import type { DocumentProps } from "@react-pdf/renderer"
 import React from "react"
 import type { Resume } from "../schema/Resume.ts"
 import { RenderError } from "./errors.ts"
@@ -21,6 +22,17 @@ export interface PdfRendererService {
   readonly getAvailableTemplates: () => Effect.Effect<PdfTemplate[]>
 }
 
+// Implementation function - called directly within the service
+const renderImpl = async (resume: Resume, templateName?: string): Promise<Uint8Array> => {
+  const template = templateName
+    ? getTemplate(templateName) ?? getDefaultTemplate()
+    : getDefaultTemplate()
+
+  const element = React.createElement(template.component, { resume })
+  const buffer = await renderToBuffer(element as React.ReactElement<DocumentProps>)
+  return new Uint8Array(buffer)
+}
+
 export class PdfRenderer extends Context.Tag("@app/PdfRenderer")<
   PdfRenderer,
   PdfRendererService
@@ -28,24 +40,18 @@ export class PdfRenderer extends Context.Tag("@app/PdfRenderer")<
   static readonly layer = Layer.succeed(PdfRenderer, PdfRenderer.of({
     render: (resume, templateName) =>
       Effect.tryPromise({
-        try: async () => {
-          const template = templateName
-            ? getTemplate(templateName) ?? getDefaultTemplate()
-            : getDefaultTemplate()
-
-          const element = React.createElement(template.component, { resume })
-          const buffer = await renderToBuffer(element as React.ReactElement)
-          return new Uint8Array(buffer)
-        },
+        try: () => renderImpl(resume, templateName),
         catch: (error) => new RenderError({ cause: error }),
       }),
 
     renderToFile: (resume, path, templateName) =>
       Effect.gen(function* () {
-        const renderer = yield* PdfRenderer
         const fs = yield* FileSystem.FileSystem
 
-        const buffer = yield* renderer.render(resume, templateName)
+        const buffer = yield* Effect.tryPromise({
+          try: () => renderImpl(resume, templateName),
+          catch: (error) => new RenderError({ cause: error }),
+        })
         yield* fs.writeFile(path, buffer).pipe(
           Effect.mapError((cause) => new RenderError({ cause }))
         )

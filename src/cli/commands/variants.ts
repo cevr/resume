@@ -89,7 +89,7 @@ const diffCommand = Command.make("diff", { name: diffNameArg }, ({ name }) =>
       const masterExp = master.experience[i]
       const variantExp = variant.experience[i]
 
-      if (!variantExp) continue
+      if (!variantExp || !masterExp) continue
 
       const masterCount = masterExp.highlights.length
       const variantCount = variantExp.highlights.length

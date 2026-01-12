@@ -32,33 +32,6 @@ const resumePath = Args.file({ name: "resume" }).pipe(
   Args.withDescription("Path to resume markdown file")
 )
 
-async function exportToFormat(
-  resume: any,
-  format: ExportFormat,
-  outputPath: string,
-  template: Option.Option<string>,
-  exporter: any,
-  pdfRenderer: any,
-  docxRenderer: any
-) {
-  switch (format) {
-    case "pdf": {
-      const templateName = Option.getOrUndefined(template)
-      await Effect.runPromise(pdfRenderer.renderToFile(resume, outputPath, templateName))
-      break
-    }
-    case "docx": {
-      await Effect.runPromise(docxRenderer.renderToFile(resume, outputPath))
-      break
-    }
-    case "txt":
-    case "json": {
-      await Effect.runPromise(exporter.export(resume, { format, outputPath }))
-      break
-    }
-  }
-}
-
 export const exportCommand = Command.make(
   "export",
   { format, output, template, all, resumePath },

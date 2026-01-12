@@ -1,5 +1,5 @@
 import { Command, Args } from "@effect/cli"
-import { Console, Effect } from "effect"
+import { Console, Effect, Option } from "effect"
 import { Config, ResumeRepo } from "../../services/index.ts"
 
 const termArg = Args.text({ name: "term" }).pipe(
@@ -70,6 +70,7 @@ export const searchCommand = Command.make(
         // Highlights
         for (let i = 0; i < exp.highlights.length; i++) {
           const h = exp.highlights[i]
+          if (!h) continue
           if (h.text.toLowerCase().includes(searchTerm)) {
             results.push(
               `Experience > ${exp.company} > Highlight #${i + 1}:\n  - "${highlightTerm(h.text, term)}"`
@@ -77,44 +78,53 @@ export const searchCommand = Command.make(
           }
 
           // Keywords
-          if (h.keywords._tag === "Some") {
-            const kwMatches = h.keywords.value.filter((kw) =>
-              kw.toLowerCase().includes(searchTerm)
-            )
-            if (kwMatches.length > 0) {
-              results.push(
-                `Experience > ${exp.company} > Highlight #${i + 1} keywords:\n  - [${kwMatches.join(", ")}]`
+          Option.match(h.keywords, {
+            onNone: () => {},
+            onSome: (keywords) => {
+              const kwMatches = keywords.filter((kw) =>
+                kw.toLowerCase().includes(searchTerm)
               )
-            }
-          }
+              if (kwMatches.length > 0) {
+                results.push(
+                  `Experience > ${exp.company} > Highlight #${i + 1} keywords:\n  - [${kwMatches.join(", ")}]`
+                )
+              }
+            },
+          })
         }
 
         // Technologies
-        if (exp.technologies._tag === "Some") {
-          const techMatches = exp.technologies.value.filter((t) =>
-            t.toLowerCase().includes(searchTerm)
-          )
-          if (techMatches.length > 0) {
-            results.push(
-              `Experience > ${exp.company} > Technologies:\n  - ${techMatches.join(", ")}`
+        Option.match(exp.technologies, {
+          onNone: () => {},
+          onSome: (techs) => {
+            const techMatches = techs.filter((t) =>
+              t.toLowerCase().includes(searchTerm)
             )
-          }
-        }
+            if (techMatches.length > 0) {
+              results.push(
+                `Experience > ${exp.company} > Technologies:\n  - ${techMatches.join(", ")}`
+              )
+            }
+          },
+        })
       }
 
       // Search open source
-      if (resume.openSource._tag === "Some") {
-        for (const project of resume.openSource.value) {
-          if (
-            project.name.toLowerCase().includes(searchTerm) ||
-            project.description.toLowerCase().includes(searchTerm)
-          ) {
-            results.push(
-              `Open Source > ${project.name}:\n  - ${project.description}`
-            )
+      Option.match(resume.openSource, {
+        onNone: () => {},
+        onSome: (projects) => {
+          for (const project of projects) {
+            if (
+              project.name.toLowerCase().includes(searchTerm) ||
+              project.description.toLowerCase().includes(searchTerm)
+            ) {
+              results.push(
+                `Open Source > ${project.name}:\n  - ${project.description}`
+              )
+            }
           }
-        }
-      }
+        },
+      })
 
       // Output results
       if (results.length === 0) {

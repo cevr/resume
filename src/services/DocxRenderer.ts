@@ -1,4 +1,4 @@
-import { Context, Effect, Layer } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 import { FileSystem } from "@effect/platform"
 import {
   Document,
@@ -21,6 +21,13 @@ export interface DocxRendererService {
   ) => Effect.Effect<void, RenderError, FileSystem.FileSystem>
 }
 
+// Implementation function - called directly within the service
+const renderImpl = async (resume: Resume): Promise<Uint8Array> => {
+  const doc = createDocument(resume)
+  const buffer = await Packer.toBuffer(doc)
+  return new Uint8Array(buffer)
+}
+
 export class DocxRenderer extends Context.Tag("@app/DocxRenderer")<
   DocxRenderer,
   DocxRendererService
@@ -28,20 +35,18 @@ export class DocxRenderer extends Context.Tag("@app/DocxRenderer")<
   static readonly layer = Layer.succeed(DocxRenderer, DocxRenderer.of({
     render: (resume) =>
       Effect.tryPromise({
-        try: async () => {
-          const doc = createDocument(resume)
-          const buffer = await Packer.toBuffer(doc)
-          return new Uint8Array(buffer)
-        },
+        try: () => renderImpl(resume),
         catch: (error) => new RenderError({ cause: error }),
       }),
 
     renderToFile: (resume, path) =>
       Effect.gen(function* () {
-        const renderer = yield* DocxRenderer
         const fs = yield* FileSystem.FileSystem
 
-        const buffer = yield* renderer.render(resume)
+        const buffer = yield* Effect.tryPromise({
+          try: () => renderImpl(resume),
+          catch: (error) => new RenderError({ cause: error }),
+        })
         yield* fs.writeFile(path, buffer).pipe(
           Effect.mapError((cause) => new RenderError({ cause }))
         )
@@ -72,12 +77,14 @@ function createDocument(resume: Resume): Document {
     })
   )
 
-  // Contact info
-  const contactParts: string[] = [resume.contact.email]
-  if (resume.contact.phone._tag === "Some") contactParts.push(resume.contact.phone.value)
-  if (resume.contact.website._tag === "Some") contactParts.push(resume.contact.website.value)
-  if (resume.contact.linkedin._tag === "Some") contactParts.push(resume.contact.linkedin.value)
-  if (resume.contact.github._tag === "Some") contactParts.push(resume.contact.github.value)
+  // Contact info - collect all present optional fields
+  const contactParts = [
+    resume.contact.email,
+    ...Option.getOrElse(Option.map(resume.contact.phone, (v) => [v]), () => []),
+    ...Option.getOrElse(Option.map(resume.contact.website, (v) => [v]), () => []),
+    ...Option.getOrElse(Option.map(resume.contact.linkedin, (v) => [v]), () => []),
+    ...Option.getOrElse(Option.map(resume.contact.github, (v) => [v]), () => []),
+  ]
 
   children.push(
     new Paragraph({
@@ -94,29 +101,30 @@ function createDocument(resume: Resume): Document {
   )
 
   // Summary
-  if (resume.summary._tag === "Some") {
-    children.push(createSectionHeader("PROFESSIONAL SUMMARY"))
-    children.push(
-      new Paragraph({
-        children: [new TextRun({ text: resume.summary.value.default, size: 22 })],
-        spacing: { after: 200 },
-      })
-    )
-  }
+  Option.match(resume.summary, {
+    onNone: () => {},
+    onSome: (summary) => {
+      children.push(createSectionHeader("PROFESSIONAL SUMMARY"))
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: summary.default, size: 22 })],
+          spacing: { after: 200 },
+        })
+      )
+    },
+  })
 
-  // Skills
-  children.push(createSectionHeader("SKILLS"))
-  if (resume.skills.frontend._tag === "Some") {
-    children.push(createSkillLine("Frontend", resume.skills.frontend.value))
-  }
-  if (resume.skills.backend._tag === "Some") {
-    children.push(createSkillLine("Backend", resume.skills.backend.value))
-  }
-  if (resume.skills.infrastructure._tag === "Some") {
-    children.push(createSkillLine("Infrastructure", resume.skills.infrastructure.value))
-  }
-  if (resume.skills.languages._tag === "Some") {
-    children.push(createSkillLine("Languages", resume.skills.languages.value))
+  // Skills - collect all present skill categories
+  const skillParagraphs = [
+    Option.map(resume.skills.frontend, (s) => createSkillLine("Frontend", s)),
+    Option.map(resume.skills.backend, (s) => createSkillLine("Backend", s)),
+    Option.map(resume.skills.infrastructure, (s) => createSkillLine("Infrastructure", s)),
+    Option.map(resume.skills.languages, (s) => createSkillLine("Languages", s)),
+  ].filter(Option.isSome).map((o) => o.value)
+
+  if (skillParagraphs.length > 0) {
+    children.push(createSectionHeader("SKILLS"))
+    children.push(...skillParagraphs)
   }
 
   // Experience
@@ -130,11 +138,12 @@ function createDocument(resume: Resume): Document {
         ],
       })
     )
+    const location = Option.getOrElse(Option.map(exp.location, (l) => ` | ${l}`), () => "")
     children.push(
       new Paragraph({
         children: [
           new TextRun({
-            text: `${exp.startDate} - ${exp.endDate}${exp.location._tag === "Some" ? ` | ${exp.location.value}` : ""}`,
+            text: `${exp.startDate} - ${exp.endDate}${location}`,
             size: 20,
             color: "666666",
           }),
@@ -154,29 +163,35 @@ function createDocument(resume: Resume): Document {
   }
 
   // Education
-  if (resume.education._tag === "Some" && resume.education.value.length > 0) {
-    children.push(createSectionHeader("EDUCATION"))
-    for (const edu of resume.education.value) {
-      children.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: edu.institution, bold: true, size: 24 }),
-          ],
-        })
-      )
-      children.push(
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: `${edu.degree}${edu.graduationDate._tag === "Some" ? ` | ${edu.graduationDate.value}` : ""}`,
-              size: 22,
-            }),
-          ],
-          spacing: { after: 100 },
-        })
-      )
-    }
-  }
+  Option.match(resume.education, {
+    onNone: () => {},
+    onSome: (education) => {
+      if (education.length > 0) {
+        children.push(createSectionHeader("EDUCATION"))
+        for (const edu of education) {
+          children.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: edu.institution, bold: true, size: 24 }),
+              ],
+            })
+          )
+          const gradDate = Option.getOrElse(Option.map(edu.graduationDate, (d) => ` | ${d}`), () => "")
+          children.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `${edu.degree}${gradDate}`,
+                  size: 22,
+                }),
+              ],
+              spacing: { after: 100 },
+            })
+          )
+        }
+      }
+    },
+  })
 
   return new Document({
     sections: [{ children }],

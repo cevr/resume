@@ -20,31 +20,32 @@ export interface JobAnalyzerService {
   readonly validateAtsCompatibility: (resume: Resume) => Effect.Effect<string[]>
 }
 
+// Implementation function - called directly within the service
+const parseJobDescriptionImpl = (text: string): JobDescription => {
+  const keywords = extractKeywords(text)
+  const requirements = extractSection(text, ["requirements", "qualifications", "must have", "required"])
+  const responsibilities = extractSection(text, ["responsibilities", "duties", "what you'll do", "role"])
+
+  return new JobDescription({
+    title: Option.none(),
+    company: Option.none(),
+    requirements,
+    responsibilities,
+    keywords,
+    rawText: text,
+  })
+}
+
 export class JobAnalyzer extends Context.Tag("@app/JobAnalyzer")<
   JobAnalyzer,
   JobAnalyzerService
 >() {
   static readonly layer = Layer.succeed(JobAnalyzer, JobAnalyzer.of({
-    parseJobDescription: (text) =>
-      Effect.sync(() => {
-        const keywords = extractKeywords(text)
-        const requirements = extractSection(text, ["requirements", "qualifications", "must have", "required"])
-        const responsibilities = extractSection(text, ["responsibilities", "duties", "what you'll do", "role"])
-
-        return new JobDescription({
-          title: Option.none(),
-          company: Option.none(),
-          requirements,
-          responsibilities,
-          keywords,
-          rawText: text,
-        })
-      }),
+    parseJobDescription: (text) => Effect.sync(() => parseJobDescriptionImpl(text)),
 
     fetchJobDescription: (url) =>
       Effect.gen(function* () {
         const client = yield* HttpClient.HttpClient
-        const analyzer = yield* JobAnalyzer
 
         const response = yield* client.get(url).pipe(
           Effect.mapError((cause) => new FetchError({ url, cause }))
@@ -66,7 +67,7 @@ export class JobAnalyzer extends Context.Tag("@app/JobAnalyzer")<
           .replace(/\s+/g, " ")
           .trim()
 
-        return yield* analyzer.parseJobDescription(text)
+        return parseJobDescriptionImpl(text)
       }),
 
     analyzeMatch: (resume, job) =>
@@ -81,9 +82,9 @@ export class JobAnalyzer extends Context.Tag("@app/JobAnalyzer")<
 
         const sectionValidation = new SectionValidation({
           hasContact: true, // Always true if we have a resume
-          hasSummary: resume.summary._tag === "Some",
+          hasSummary: Option.isSome(resume.summary),
           hasExperience: resume.experience.length > 0,
-          hasEducation: resume.education._tag === "Some" && resume.education.value.length > 0,
+          hasEducation: Option.isSome(resume.education) && resume.education.value.length > 0,
           hasSkills: hasAnySkills(resume),
         })
 
@@ -210,30 +211,28 @@ function extractSection(text: string, markers: string[]): string[] {
 function getResumeText(resume: Resume): string {
   const parts: string[] = []
 
-  if (resume.summary._tag === "Some") {
-    parts.push(resume.summary.value.default)
-  }
+  // Summary
+  Option.map(resume.summary, (s) => parts.push(s.default))
 
-  const allSkills: string[] = []
-  if (resume.skills.frontend._tag === "Some") allSkills.push(...resume.skills.frontend.value)
-  if (resume.skills.backend._tag === "Some") allSkills.push(...resume.skills.backend.value)
-  if (resume.skills.infrastructure._tag === "Some") allSkills.push(...resume.skills.infrastructure.value)
-  if (resume.skills.languages._tag === "Some") allSkills.push(...resume.skills.languages.value)
-  if (resume.skills.leadership._tag === "Some") allSkills.push(...resume.skills.leadership.value)
-  if (resume.skills.tools._tag === "Some") allSkills.push(...resume.skills.tools.value)
+  // Collect all skills using Option.getOrElse
+  const allSkills = [
+    ...Option.getOrElse(resume.skills.frontend, () => []),
+    ...Option.getOrElse(resume.skills.backend, () => []),
+    ...Option.getOrElse(resume.skills.infrastructure, () => []),
+    ...Option.getOrElse(resume.skills.languages, () => []),
+    ...Option.getOrElse(resume.skills.leadership, () => []),
+    ...Option.getOrElse(resume.skills.tools, () => []),
+  ]
   parts.push(allSkills.join(" "))
 
+  // Experience
   for (const exp of resume.experience) {
     parts.push(exp.title)
     parts.push(exp.company)
-    if (exp.technologies._tag === "Some") {
-      parts.push(exp.technologies.value.join(" "))
-    }
+    Option.map(exp.technologies, (techs) => parts.push(techs.join(" ")))
     for (const h of exp.highlights) {
       parts.push(h.text)
-      if (h.keywords._tag === "Some") {
-        parts.push(h.keywords.value.join(" "))
-      }
+      Option.map(h.keywords, (kws) => parts.push(kws.join(" ")))
     }
   }
 
@@ -242,21 +241,23 @@ function getResumeText(resume: Resume): string {
 
 function hasAnySkills(resume: Resume): boolean {
   return (
-    resume.skills.frontend._tag === "Some" ||
-    resume.skills.backend._tag === "Some" ||
-    resume.skills.infrastructure._tag === "Some" ||
-    resume.skills.languages._tag === "Some" ||
-    resume.skills.leadership._tag === "Some" ||
-    resume.skills.tools._tag === "Some"
+    Option.isSome(resume.skills.frontend) ||
+    Option.isSome(resume.skills.backend) ||
+    Option.isSome(resume.skills.infrastructure) ||
+    Option.isSome(resume.skills.languages) ||
+    Option.isSome(resume.skills.leadership) ||
+    Option.isSome(resume.skills.tools)
   )
 }
 
 function getAtsWarnings(resume: Resume): string[] {
   const warnings: string[] = []
 
-  if (resume.summary._tag === "None") {
-    warnings.push("Missing professional summary - ATS systems often look for this section")
-  }
+  // Check for missing summary
+  Option.match(resume.summary, {
+    onNone: () => warnings.push("Missing professional summary - ATS systems often look for this section"),
+    onSome: () => {},
+  })
 
   if (resume.experience.length === 0) {
     warnings.push("No work experience listed")
@@ -270,11 +271,9 @@ function getAtsWarnings(resume: Resume): string[] {
   let unquantifiedCount = 0
   for (const exp of resume.experience) {
     for (const h of exp.highlights) {
-      if (h.quantified._tag === "None" || h.quantified.value === false) {
-        // Check if the text has numbers
-        if (!/\d/.test(h.text)) {
-          unquantifiedCount++
-        }
+      const isQuantified = Option.getOrElse(h.quantified, () => false)
+      if (!isQuantified && !/\d/.test(h.text)) {
+        unquantifiedCount++
       }
     }
   }

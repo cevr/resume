@@ -1,5 +1,6 @@
 import { Layer } from "effect"
 import { BunContext } from "@effect/platform-bun"
+import { FetchHttpClient } from "@effect/platform"
 import {
   Config,
   ResumeRepo,
@@ -23,8 +24,11 @@ const CoreServicesLive = Layer.mergeAll(
   Preview.layer
 )
 
-// Full application layer - BunContext.layer includes HttpClient
+// Full application layer - BunContext + FetchHttpClient for HTTP requests
 export const AppLive = Layer.mergeAll(
   ConfigLive,
   CoreServicesLive
-).pipe(Layer.provideMerge(BunContext.layer))
+).pipe(
+  Layer.provideMerge(BunContext.layer),
+  Layer.provideMerge(FetchHttpClient.layer)
+)
