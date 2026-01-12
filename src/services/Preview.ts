@@ -87,6 +87,16 @@ export class Preview extends Context.Tag("@app/Preview")<
           lines.push("")
         }
 
+        // Open Source
+        if (resume.openSource._tag === "Some" && resume.openSource.value.length > 0) {
+          lines.push("OPEN SOURCE")
+          lines.push("-".repeat(width))
+          for (const project of resume.openSource.value) {
+            lines.push(`${project.name}: ${project.description}`)
+          }
+          lines.push("")
+        }
+
         return lines.join("\n")
       }),
 
@@ -216,6 +226,15 @@ function generateHtml(resume: Resume): string {
     ${edu.degree}${edu.graduationDate._tag === "Some" ? ` | ${edu.graduationDate.value}` : ""}
   </div>
   `).join("")}
+  ` : ""}
+
+  ${resume.openSource._tag === "Some" && resume.openSource.value.length > 0 ? `
+  <h2>Open Source</h2>
+  <ul>
+  ${resume.openSource.value.map((project) => `
+    <li><strong>${project.url ? `<a href="${project.url}">${project.name}</a>` : project.name}</strong>: ${project.description}</li>
+  `).join("")}
+  </ul>
   ` : ""}
 </body>
 </html>`

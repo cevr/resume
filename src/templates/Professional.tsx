@@ -23,17 +23,16 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     fontFamily: "Helvetica-Bold",
-    marginBottom: 4,
+    marginBottom: 12,
   },
   contact: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
     color: "#666",
     fontSize: 9,
   },
   contactItem: {
-    marginRight: 8,
+    marginRight: 4,
   },
   section: {
     marginBottom: 14,
@@ -261,6 +260,22 @@ export const ProfessionalTemplate: React.FC<Props> = ({ resume }) => (
                   <Text style={styles.bulletText}>{h}</Text>
                 </View>
               ))}
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Open Source */}
+      {resume.openSource._tag === "Some" && resume.openSource.value.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Open Source</Text>
+          {resume.openSource.value.map((project, i) => (
+            <View key={i} style={styles.bullet}>
+              <Text style={styles.bulletPoint}>•</Text>
+              <Text style={styles.bulletText}>
+                <Text style={styles.jobTitle}>{project.name}</Text>
+                <Text>: {project.description}</Text>
+              </Text>
             </View>
           ))}
         </View>

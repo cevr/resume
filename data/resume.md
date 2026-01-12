@@ -14,10 +14,11 @@ contact:
 
 summary:
   default: |
-    Staff-level product engineer with 7+ years of experience building scalable
-    web applications and leading technical initiatives. Proven track record in
-    system architecture, performance optimization, and cross-functional collaboration.
-    Passionate about developer experience and delivering impactful products.
+    Staff-level product engineer with 7+ years building scalable applications
+    and driving technical strategy. Track record of architecting core products,
+    establishing observability infrastructure, and delivering 10x performance
+    improvements. Combines deep technical expertise with product thinking to
+    deliver measurable business outcomes.
 
 skills:
   frontend:
@@ -58,6 +59,8 @@ skills:
     - Effect
     - Bun
     - Figma
+    - System Design
+    - Technical Strategy
 
 experience:
   - company: "Bite"
@@ -66,44 +69,46 @@ experience:
     startDate: "2022-06"
     endDate: "present"
     highlights:
-      - text: "Led infrastructure modularization enabling independent scaling and more fluid continuous deployment"
+      - text: "Pitched, designed, and architected v2 of core product, improving key business metrics including average check size, session efficiency, and order completion rates"
         keywords:
           - architecture
-          - infrastructure
+          - product
           - leadership
-          - devops
+          - strategy
         quantified: false
-      - text: "Optimized system build pipelines by 10x, saving hundreds of development hours annually"
+      - text: "Established observability stack from scratch using Grafana, Prometheus, and Sentry, implementing metrics, logging, and tracing where none existed"
+        keywords:
+          - observability
+          - monitoring
+          - analytics
+          - infrastructure
+          - grafana
+          - prometheus
+        quantified: false
+      - text: "Optimized build pipelines by 10x (5 min to 30 sec), saving hundreds of development hours annually"
         keywords:
           - performance
           - optimization
           - tooling
           - devops
         quantified: true
-      - text: "Improved application efficiency - decreased Time to Interactive (TTI) from 6 seconds to 2 seconds"
+      - text: "Improved application performance by reducing Time to Interactive from 6s to 2s"
         keywords:
           - performance
           - optimization
           - frontend
         quantified: true
-      - text: "Developed comprehensive app redesign and v2 development roadmap focused on enhancing UX/UI/DX"
-        keywords:
-          - product
-          - roadmap
-          - ux
-          - dx
-        quantified: false
-      - text: "Collaborated with design team to establish universal design library for seamless integration across all frontend projects"
+      - text: "Created design system for kiosk application, ensuring visual consistency and accelerating feature development"
         keywords:
           - design-system
-          - collaboration
+          - architecture
           - frontend
         quantified: false
-      - text: "Engineered critical libraries to facilitate creation of robust, resilient, and secure applications"
+      - text: "Mentored junior and mid-level engineers on code quality, architecture patterns, and technical decision-making"
         keywords:
-          - architecture
-          - security
-          - libraries
+          - mentorship
+          - leadership
+          - team-development
         quantified: false
     technologies:
       - TypeScript
@@ -117,12 +122,13 @@ experience:
     startDate: "2021-03"
     endDate: "2022-06"
     highlights:
-      - text: "Architected, designed and engineered a client-facing fraud analysis and detection platform"
+      - text: "Architected client-facing fraud detection platform processing 100K+ daily transactions"
         keywords:
           - architecture
           - security
           - product
-        quantified: false
+          - scale
+        quantified: true
       - text: "Improved application build times by 7x (from 5 minutes to 30 seconds)"
         keywords:
           - performance
@@ -154,13 +160,13 @@ experience:
     startDate: "2021-10"
     endDate: "2022-03"
     highlights:
-      - text: "Developed and architected web app experience from concept to MVP, preparing early-stage startup for scaling"
+      - text: "Architected web app from concept to MVP in under 3 months, preparing early-stage startup for scaling"
         keywords:
           - architecture
           - product
           - startup
-        quantified: false
-      - text: "Iterated on app designs focusing on building a delightful and sleek experience"
+        quantified: true
+      - text: "Refined user experience through iterative design, delivering a polished and intuitive interface"
         keywords:
           - ux
           - design
@@ -171,13 +177,14 @@ experience:
           - performance
           - optimization
         quantified: true
-      - text: "Managed and communicated deadlines and expectations with stakeholders"
+      - text: "Collaborated directly with founding team to define product requirements, manage deadlines, and align technical decisions with business goals"
         keywords:
           - communication
           - leadership
           - stakeholder
+          - product
         quantified: false
-      - text: "Organized and documented development processes for scale"
+      - text: "Established development processes and documentation standards for scaling engineering operations"
         keywords:
           - documentation
           - process
@@ -197,21 +204,21 @@ experience:
     startDate: "2019-09"
     endDate: "2021-03"
     highlights:
-      - text: "Developed, architected, and designed a full-stack developer platform for monitoring in-game assets, player interactions, build times, pipelines and artifacts"
+      - text: "Architected full-stack developer platform for monitoring in-game assets, player interactions, build pipelines, and artifacts"
         keywords:
           - architecture
           - full-stack
           - platform
           - monitoring
         quantified: false
-      - text: "Created scalable and cohesive framework enabling multiple remote and international teams to develop apps within the platform using a singular design system"
+      - text: "Architected platform framework enabling 3 international teams (15+ engineers) to build apps using unified design system"
         keywords:
           - architecture
           - design-system
           - scale
           - collaboration
-        quantified: false
-      - text: "Managed sprints, deadlines, feature requests and tickets"
+        quantified: true
+      - text: "Led sprint planning and delivery for cross-functional team, managing feature requests from concept through deployment"
         keywords:
           - agile
           - leadership
@@ -278,7 +285,7 @@ experience:
           - libraries
           - frontend
         quantified: false
-      - text: "Served as implementation specialist for customer requests including features and app customizations"
+      - text: "Led client implementations, delivering custom features and application configurations"
         keywords:
           - customer
           - implementation
@@ -291,4 +298,29 @@ experience:
       - MySQL
       - Vue
       - React
+
+openSource:
+  - name: "overnight"
+    url: "https://github.com/cevr/overnight"
+    description: "VS Code theme with 280+ stars"
+    keywords:
+      - developer-tools
+      - vscode
+    quantified: true
+  - name: "ftld"
+    url: "https://github.com/cevr/ftld"
+    description: "Functional programming library with 2K+ monthly npm downloads"
+    keywords:
+      - typescript
+      - functional-programming
+      - open-source
+    quantified: true
+  - name: "XState"
+    url: "https://github.com/statelyai/xstate"
+    description: "Contributor to popular state management library (25K+ stars)"
+    keywords:
+      - state-management
+      - typescript
+      - open-source
+    quantified: true
 ---

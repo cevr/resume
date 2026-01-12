@@ -65,6 +65,15 @@ export class Project extends Schema.Class<Project>("Project")({
   highlights: Schema.optionalWith(Schema.Array(Schema.String), { as: "Option" }),
 }) {}
 
+// Open Source contribution
+export class OpenSourceProject extends Schema.Class<OpenSourceProject>("OpenSourceProject")({
+  name: Schema.String,
+  url: Schema.optionalWith(Schema.String, { as: "Option" }),
+  description: Schema.String,
+  keywords: Schema.optionalWith(Schema.Array(Schema.String), { as: "Option" }),
+  quantified: Schema.optionalWith(Schema.Boolean, { as: "Option" }),
+}) {}
+
 // Summary with variants for tailoring
 export class Summary extends Schema.Class<Summary>("Summary")({
   default: Schema.String,
@@ -91,4 +100,5 @@ export class Resume extends Schema.Class<Resume>("Resume")({
   education: Schema.optionalWith(Schema.Array(Education), { as: "Option" }),
   certifications: Schema.optionalWith(Schema.Array(Certification), { as: "Option" }),
   projects: Schema.optionalWith(Schema.Array(Project), { as: "Option" }),
+  openSource: Schema.optionalWith(Schema.Array(OpenSourceProject), { as: "Option" }),
 }) {}
