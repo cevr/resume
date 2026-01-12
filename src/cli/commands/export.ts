@@ -5,7 +5,8 @@ import type { ExportFormat } from "../../services/Exporter.ts"
 
 const format = Options.choice("format", ["pdf", "docx", "txt", "json"]).pipe(
   Options.withAlias("f"),
-  Options.withDescription("Output format")
+  Options.optional,
+  Options.withDescription("Output format (required unless --all)")
 )
 
 const output = Options.text("output").pipe(
@@ -20,45 +21,115 @@ const template = Options.text("template").pipe(
   Options.withDescription("PDF template name (for PDF export)")
 )
 
+const all = Options.boolean("all").pipe(
+  Options.withAlias("a"),
+  Options.withDefault(false),
+  Options.withDescription("Export all formats (PDF, DOCX, TXT, JSON)")
+)
+
 const resumePath = Args.file({ name: "resume" }).pipe(
   Args.optional,
   Args.withDescription("Path to resume markdown file")
 )
 
+async function exportToFormat(
+  resume: any,
+  format: ExportFormat,
+  outputPath: string,
+  template: Option.Option<string>,
+  exporter: any,
+  pdfRenderer: any,
+  docxRenderer: any
+) {
+  switch (format) {
+    case "pdf": {
+      const templateName = Option.getOrUndefined(template)
+      await Effect.runPromise(pdfRenderer.renderToFile(resume, outputPath, templateName))
+      break
+    }
+    case "docx": {
+      await Effect.runPromise(docxRenderer.renderToFile(resume, outputPath))
+      break
+    }
+    case "txt":
+    case "json": {
+      await Effect.runPromise(exporter.export(resume, { format, outputPath }))
+      break
+    }
+  }
+}
+
 export const exportCommand = Command.make(
   "export",
-  { format, output, template, resumePath },
-  ({ format, output, template, resumePath }) =>
+  { format, output, template, all, resumePath },
+  ({ format, output, template, all, resumePath }) =>
     Effect.gen(function* () {
       const config = yield* Config
       const repo = yield* ResumeRepo
       const exporter = yield* Exporter
+      const pdfRenderer = yield* PdfRenderer
+      const docxRenderer = yield* DocxRenderer
 
       const path = Option.getOrElse(resumePath, () => config.defaultResumePath)
       const resume = yield* repo.load(path)
 
+      if (all) {
+        // Export all formats
+        const formats: ExportFormat[] = ["pdf", "docx", "txt", "json"]
+        yield* Console.log("Exporting all formats...")
+
+        for (const fmt of formats) {
+          const outputPath = `${config.outputDirectory}/resume.${fmt}`
+          yield* Console.log(`  → ${outputPath}`)
+
+          switch (fmt) {
+            case "pdf": {
+              const templateName = Option.getOrUndefined(template)
+              yield* pdfRenderer.renderToFile(resume, outputPath, templateName)
+              break
+            }
+            case "docx": {
+              yield* docxRenderer.renderToFile(resume, outputPath)
+              break
+            }
+            case "txt":
+            case "json": {
+              yield* exporter.export(resume, { format: fmt, outputPath })
+              break
+            }
+          }
+        }
+
+        yield* Console.log("\n✓ All formats exported successfully")
+        return
+      }
+
+      // Single format export
+      if (Option.isNone(format)) {
+        yield* Console.log("Error: --format is required (or use --all)")
+        return
+      }
+
+      const fmt = format.value as ExportFormat
       const outputPath = Option.getOrElse(output, () => {
-        const ext = format as ExportFormat
-        return `${config.outputDirectory}/resume.${ext}`
+        return `${config.outputDirectory}/resume.${fmt}`
       })
 
       yield* Console.log(`Exporting resume to ${outputPath}...`)
 
-      switch (format as ExportFormat) {
+      switch (fmt) {
         case "pdf": {
-          const renderer = yield* PdfRenderer
           const templateName = Option.getOrUndefined(template)
-          yield* renderer.renderToFile(resume, outputPath, templateName)
+          yield* pdfRenderer.renderToFile(resume, outputPath, templateName)
           break
         }
         case "docx": {
-          const renderer = yield* DocxRenderer
-          yield* renderer.renderToFile(resume, outputPath)
+          yield* docxRenderer.renderToFile(resume, outputPath)
           break
         }
         case "txt":
         case "json": {
-          yield* exporter.export(resume, { format: format as ExportFormat, outputPath })
+          yield* exporter.export(resume, { format: fmt, outputPath })
           break
         }
       }

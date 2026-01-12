@@ -6,9 +6,12 @@ import {
   analyzeCommand,
   previewCommand,
   validateCommand,
-  improveCommand,
   tailorCommand,
   initCommand,
+  statsCommand,
+  jobsCommand,
+  variantsCommand,
+  searchCommand,
 } from "./commands/index.ts"
 import { AppLive } from "../layers/App.ts"
 
@@ -17,10 +20,13 @@ const resume = Command.make("resume", {}, () =>
   Console.log(`Resume CLI - ATS-optimized resume management
 
 Commands:
+  stats     Show resume statistics and health metrics
+  search    Search for a term in the resume
+  jobs      Manage tracked job descriptions
+  variants  Manage resume variants
   export    Export resume to PDF, DOCX, TXT, or JSON
   analyze   Analyze resume against a job description
   tailor    Generate a job-tailored resume variant
-  improve   AI-powered resume improvement suggestions
   preview   Preview resume in terminal or browser
   validate  Validate resume structure
   init      Initialize a new resume from template
@@ -31,10 +37,13 @@ Use "resume <command> --help" for more information.`)
 // Compose with subcommands
 const command = resume.pipe(
   Command.withSubcommands([
+    statsCommand,
+    searchCommand,
+    jobsCommand,
+    variantsCommand,
     exportCommand,
     analyzeCommand,
     tailorCommand,
-    improveCommand,
     previewCommand,
     validateCommand,
     initCommand,

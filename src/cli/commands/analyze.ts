@@ -1,6 +1,7 @@
 import { Command, Options, Prompt } from "@effect/cli"
 import { Console, Effect, Option } from "effect"
-import { Config, ResumeRepo, JobAnalyzer, AIAssistant } from "../../services/index.ts"
+import { FileSystem } from "@effect/platform"
+import { Config, ResumeRepo, JobAnalyzer } from "../../services/index.ts"
 
 const jobUrl = Options.text("job-url").pipe(
   Options.optional,
@@ -12,22 +13,41 @@ const jobFile = Options.file("job-file").pipe(
   Options.withDescription("Path to job description file")
 )
 
+const jobName = Options.text("job").pipe(
+  Options.withAlias("j"),
+  Options.optional,
+  Options.withDescription("Name of saved job to analyze against")
+)
+
 export const analyzeCommand = Command.make(
   "analyze",
-  { jobUrl, jobFile },
-  ({ jobUrl, jobFile }) =>
+  { jobUrl, jobFile, jobName },
+  ({ jobUrl, jobFile, jobName }) =>
     Effect.gen(function* () {
       const config = yield* Config
       const repo = yield* ResumeRepo
       const analyzer = yield* JobAnalyzer
-      const ai = yield* AIAssistant
+      const fs = yield* FileSystem.FileSystem
 
       // Load resume
       const resume = yield* repo.load(config.defaultResumePath)
 
       // Get job description
       let jobDescription
-      if (Option.isSome(jobUrl)) {
+      if (Option.isSome(jobName)) {
+        // Load from saved job
+        const jobPath = `${config.defaultResumePath.replace("/resume.md", "/jobs")}/${jobName.value}.json`
+        const exists = yield* fs.exists(jobPath)
+        if (!exists) {
+          yield* Console.log(`Job "${jobName.value}" not found.`)
+          yield* Console.log("\nUse: resume jobs list")
+          return
+        }
+        const content = yield* fs.readFileString(jobPath)
+        const savedJob = JSON.parse(content)
+        yield* Console.log(`Analyzing against saved job: ${jobName.value}`)
+        jobDescription = yield* analyzer.parseJobDescription(savedJob.content)
+      } else if (Option.isSome(jobUrl)) {
         yield* Console.log(`Fetching job description from ${jobUrl.value}...`)
         jobDescription = yield* analyzer.fetchJobDescription(jobUrl.value)
       } else if (Option.isSome(jobFile)) {
@@ -77,15 +97,6 @@ export const analyzeCommand = Command.make(
         yield* Console.log("\nATS Warnings:")
         for (const warning of analysis.atsWarnings) {
           yield* Console.log(`  ⚠ ${warning}`)
-        }
-      }
-
-      // AI-powered keyword suggestions
-      if (config.anthropicApiKey._tag === "Some" && analysis.missingKeywords.length > 0) {
-        yield* Console.log("\nAI Keyword Suggestions:")
-        const suggestions = yield* ai.suggestKeywords(resume, jobDescription)
-        for (const keyword of suggestions.slice(0, 5)) {
-          yield* Console.log(`  → Consider adding: ${keyword}`)
         }
       }
 

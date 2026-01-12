@@ -1,7 +1,7 @@
 import { Command, Options, Prompt } from "@effect/cli"
 import { Console, Effect, Option } from "effect"
 import { FileSystem } from "@effect/platform"
-import { Config, ResumeRepo, JobAnalyzer, AIAssistant } from "../../services/index.ts"
+import { Config, ResumeRepo, JobAnalyzer } from "../../services/index.ts"
 
 const jobUrl = Options.text("job-url").pipe(
   Options.optional,
@@ -33,7 +33,6 @@ export const tailorCommand = Command.make(
       const config = yield* Config
       const repo = yield* ResumeRepo
       const analyzer = yield* JobAnalyzer
-      const ai = yield* AIAssistant
       const fs = yield* FileSystem.FileSystem
 
       // Load master resume
@@ -66,27 +65,8 @@ export const tailorCommand = Command.make(
       yield* Console.log(`Current match score: ${analysis.matchScore}%`)
       yield* Console.log(`Missing keywords: ${analysis.missingKeywords.length}`)
 
-      // Generate tailored summary if AI is available
-      let tailoredSummary: string | undefined
-      if (config.anthropicApiKey._tag === "Some") {
-        yield* Console.log("\nGenerating tailored summary...")
-        tailoredSummary = yield* ai.generateSummary(resume, jobDescription)
-        yield* Console.log("Summary generated.")
-      }
-
-      // Create the tailored resume
-      // For now, we'll create a copy with an updated summary
-      const tailored = tailoredSummary
-        ? {
-            ...resume,
-            summary: Option.some({
-              default: tailoredSummary,
-              variants: resume.summary._tag === "Some"
-                ? resume.summary.value.variants
-                : Option.none(),
-            }),
-          }
-        : resume
+      // Create copy of resume for tailoring
+      const tailored = resume
 
       // Determine output path
       const variant = Option.getOrElse(variantName, () =>
@@ -108,16 +88,14 @@ export const tailorCommand = Command.make(
 
       // Show improvement suggestions
       yield* Console.log("\nRecommendations for this role:")
-      yield* Console.log("  • Review and incorporate these missing keywords:")
-      for (const keyword of analysis.missingKeywords.slice(0, 5)) {
+      yield* Console.log("  • Missing keywords to incorporate:")
+      for (const keyword of analysis.missingKeywords.slice(0, 10)) {
         yield* Console.log(`    - ${keyword}`)
       }
 
-      if (tailoredSummary) {
-        yield* Console.log("\n  • New tailored summary added")
-      }
-
       yield* Console.log("\n  • Consider reordering highlights to emphasize relevant experience")
-      yield* Console.log("  • Export with: resume export -f pdf")
+      yield* Console.log("  • Update summary to target this specific role")
+      yield* Console.log(`\nEdit variant: data/variants/${variant}.md`)
+      yield* Console.log("Export with: resume export -f pdf")
     })
 ).pipe(Command.withDescription("Generate a job-tailored resume variant"))

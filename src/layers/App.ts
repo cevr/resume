@@ -6,7 +6,6 @@ import {
   Exporter,
   PdfRenderer,
   DocxRenderer,
-  AIAssistant,
   JobAnalyzer,
   Preview,
 } from "../services/index.ts"
@@ -14,7 +13,7 @@ import {
 // Config layer (base)
 const ConfigLive = Config.layer
 
-// Services that don't depend on Config
+// Core services
 const CoreServicesLive = Layer.mergeAll(
   ResumeRepo.layer,
   Exporter.layer,
@@ -24,12 +23,8 @@ const CoreServicesLive = Layer.mergeAll(
   Preview.layer
 )
 
-// AI service depends on Config
-const AILive = AIAssistant.layer.pipe(Layer.provide(ConfigLive))
-
 // Full application layer - BunContext.layer includes HttpClient
 export const AppLive = Layer.mergeAll(
   ConfigLive,
-  CoreServicesLive,
-  AILive
+  CoreServicesLive
 ).pipe(Layer.provideMerge(BunContext.layer))
